@@ -120,6 +120,8 @@
   </footer>
 
   <!-- JavaScript -->
+   
+  const historique = [];   // ← ajoute cette ligne ici
   <script>
     // A remplir dans l'etape 4
     // URL de l'API (a changer si l'API est ailleurs)
@@ -182,6 +184,9 @@ function afficherChargement() {
 }
 
 function afficherResultat(r) {
+    const resultat = await response.json();
+    afficherResultat(resultat);
+    ajouterHistorique(patient, resultat);  // ← ajoute cette ligne
   const couleurs = {
     palu:   { bg:"bg-red-100",    text:"text-red-800",    bar:"bg-red-500",    badge:"bg-red-500" },
     grippe: { bg:"bg-orange-100", text:"text-orange-800", bar:"bg-orange-500", badge:"bg-orange-500" },
@@ -189,7 +194,16 @@ function afficherResultat(r) {
     sain:   { bg:"bg-green-100",  text:"text-green-800",  bar:"bg-green-500",  badge:"bg-green-500" }
   };
 
+  // Icones par diagnostic
+  const icones = {
+    palu:   "🦟",
+    grippe: "🤧",
+    typh:   "🤒",
+    sain:   "✅"
+  };
+
   const c = couleurs[r.diagnostic] || couleurs["sain"];
+  const icone = icones[r.diagnostic] || "❓";
   const pct = Math.round(r.probabilite * 100);
   const section = document.getElementById("result-section");
 
@@ -198,7 +212,9 @@ function afficherResultat(r) {
       <h2 class="text-xl font-bold text-gray-800 mb-4">Resultat</h2>
       <div class="${c.bg} rounded-lg p-4 mb-4">
         <p class="text-sm text-gray-600">Diagnostic :</p>
-        <p class="text-2xl font-bold ${c.text} uppercase mt-1">${r.diagnostic}</p>
+        <p class="text-2xl font-bold ${c.text} uppercase mt-1">
+          ${icone} ${r.diagnostic}
+        </p>
       </div>
       <div class="mb-4">
         <div class="flex justify-between mb-1">
@@ -228,6 +244,59 @@ function afficherErreur(msg) {
       <p class="text-red-500 text-sm mt-2">Verifiez votre connexion et reessayez.</p>
     </div>`;
 }
+
+function ajouterHistorique(patient, resultat) {
+    historique.unshift({
+      age: patient.age,
+      region: patient.region,
+      diagnostic: resultat.diagnostic,
+      probabilite: Math.round(resultat.probabilite * 100)
+    });
+    if (historique.length > 5) historique.pop();
+    afficherHistorique();
+  }
+
+  function afficherHistorique() {
+    let section = document.getElementById("historique-section");
+    if (!section) {
+      section = document.createElement("div");
+      section.id = "historique-section";
+      section.className = "mt-6";
+      document.querySelector("main .grid").parentElement.appendChild(section);
+    }
+
+    const icones = { palu:"🦟", grippe:"🤧", typh:"🤒", sain:"✅" };
+
+    section.innerHTML = `
+      <div class="bg-white rounded-xl shadow-md p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">
+          📋 Historique des consultations
+        </h2>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-500 border-b">
+              <th class="pb-2">Age</th>
+              <th class="pb-2">Region</th>
+              <th class="pb-2">Diagnostic</th>
+              <th class="pb-2">Probabilite</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${historique.map(c => `
+              <tr class="border-b last:border-0">
+                <td class="py-2">${c.age} ans</td>
+                <td class="py-2">${c.region}</td>
+                <td class="py-2 font-medium">
+                  ${icones[c.diagnostic] || "❓"} ${c.diagnostic}
+                </td>
+                <td class="py-2">${c.probabilite}%</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
   </script>
 
 </body>
