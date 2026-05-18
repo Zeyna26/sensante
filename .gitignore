@@ -5,4 +5,4 @@ venv/
 models/*.pkl
 
 *.png
-!figures/*.png
+!figures/*.png.env
