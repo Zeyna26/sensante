@@ -2,9 +2,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import joblib
 import numpy as np
-
 import os
 from dotenv import load_dotenv
 from groq import Groq
@@ -17,10 +18,9 @@ groq_client = None
 groq_api_key = os.getenv("GROQ_API_KEY")
 if groq_api_key:
     groq_client = Groq(api_key=groq_api_key)
-    print("Client Groq initialise.")
+    print("Client Groq initialise avec succes.")
 else:
-    print("ATTENTION : GROQ_API_KEY non trouvee. "
-          "/explain sera desactive.")
+    print("ATTENTION : GROQ_API_KEY non trouvee. /explain sera desactive.")
 
 # --- Schemas Pydantic ---
 
@@ -40,15 +40,27 @@ class DiagnosticOutput(BaseModel):
     confiance: str
     message: str
 
+class ExplainInput(BaseModel):
+    diagnostic: str = Field(..., description="Diagnostic predit par le modele")
+    probabilite: float = Field(..., description="Probabilite du diagnostic")
+    age: int = Field(...)
+    sexe: str = Field(...)
+    temperature: float = Field(...)
+    region: str = Field(...)
+
+class ExplainOutput(BaseModel):
+    explication: str = Field(..., description="Explication en francais")
+    modele_llm: str = Field(default="llama-3.1-8b-instant", description="Modele LLM utilise")
+
 # --- Application FastAPI ---
 
 app = FastAPI(
     title="SenSante API",
     description="Assistant pre-diagnostic medical pour le Senegal",
-    version="0.2.0"
+    version="1.0.0"
 )
 
-# CORS (ajouté en Lab 4)
+# CORS 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -60,13 +72,13 @@ app.add_middleware(
 # --- Chargement du modele ---
 
 print("Chargement du modele...")
-#model = joblib.load("models/model.pkl")
+model = joblib.load("models/model.pkl")
 le_sexe = joblib.load("models/encoder_sexe.pkl")
 le_region = joblib.load("models/encoder_region.pkl")
 feature_cols = joblib.load("models/feature_cols.pkl")
 print(f"Modele charge : {list(model.classes_)}")
 
-# --- Routes ---
+# --- Routes API ---
 
 @app.get("/health")
 def health_check():
@@ -99,7 +111,7 @@ def predict(patient: PatientInput):
         region_enc
     ]])
 
-    diagnostic = "aucune feature detectee"
+    diagnostic = model.predict(features)[0]
     proba_max = float(model.predict_proba(features)[0].max())
     confiance = ("haute" if proba_max >= 0.7
                  else "moyenne" if proba_max >= 0.4
@@ -118,18 +130,6 @@ def predict(patient: PatientInput):
         confiance=confiance,
         message=messages.get(diagnostic, "Consultez un medecin.")
     )
-
-class ExplainInput(BaseModel):
-    diagnostic: str = Field(..., description="Diagnostic predit par le modele")
-    probabilite: float = Field(..., description="Probabilite du diagnostic")
-    age: int = Field(...)
-    sexe: str = Field(...)
-    temperature: float = Field(...)
-    region: str = Field(...)
-
-class ExplainOutput(BaseModel):
-    explication: str = Field(..., description="Explication en francais")
-    modele_llm: str = Field(default="llama-3.1-8b-instant", description="Modele LLM utilise")
 
 SYSTEM_PROMPT = """Tu es un assistant medical senegalais.
 Tu recois un diagnostic et des donnees patient.
@@ -171,13 +171,13 @@ def explain(data: ExplainInput):
 
     return ExplainOutput(explication=explication)
 
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+# --- CONFIGURATION DU FRONTEND (DOSSIER FRONTEND) ---
 
-# Servir le frontend comme fichier statique
+# 1. On monte le dossier "frontend" pour que FastAPI lise le CSS et le JS
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
+# 2. La route racine renvoie le fichier index.html qui se trouve dans "frontend"
 @app.get("/")
 def serve_frontend():
-    """Servir la page d'accueil."""
+    """Renvoie l'interface utilisateur de SenSante depuis le dossier frontend."""
     return FileResponse("frontend/index.html")
