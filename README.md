@@ -1,6 +1,3 @@
-Assistant de pre-diagnostic medical pour le Senegal
-Seynabou Cisse - L2-GLSI - ESP/UCAD
-
 ---
 title: Sensante
 emoji: 🏥
@@ -9,3 +6,7 @@ colorTo: blue
 sdk: docker
 pinned: false
 ---
+Assistant de pre-diagnostic medical pour le Senegal
+Seynabou Cisse - L2-GLSI - ESP/UCAD
+
+
