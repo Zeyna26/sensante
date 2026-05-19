@@ -60,7 +60,7 @@ app.add_middleware(
 # --- Chargement du modele ---
 
 print("Chargement du modele...")
-model = joblib.load("models/model.pkl")
+#model = joblib.load("models/model.pkl")
 le_sexe = joblib.load("models/encoder_sexe.pkl")
 le_region = joblib.load("models/encoder_region.pkl")
 feature_cols = joblib.load("models/feature_cols.pkl")
@@ -99,7 +99,7 @@ def predict(patient: PatientInput):
         region_enc
     ]])
 
-    diagnostic = model.predict(features)[0]
+    diagnostic = "aucune feature detectee"
     proba_max = float(model.predict_proba(features)[0].max())
     confiance = ("haute" if proba_max >= 0.7
                  else "moyenne" if proba_max >= 0.4
